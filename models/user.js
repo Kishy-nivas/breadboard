@@ -1,14 +1,16 @@
 const mongoose = require("mongoose"); 
 const bcrypt = require("bcrypt"); 
 const UserSchema = new mongoose.Schema({
-	name : {type : String, required : true}; 
+	name : {type : String, required : true},
 	email :{type : String, required : true}, 
 	password : {type : String, required: true}, 
 	created_at : {type : Date, default : Date.now() }
-}); 
+
+},{collection : 'user_info'}); 
 
 
-UserSchema.pre('save',(next)=>{
+
+UserSchema.pre('save',function(next){
 	var user = this; 
 	if(user.isModified('password')){
 		bcrypt.genSalt(10,(err,salt)=>{
@@ -24,7 +26,8 @@ UserSchema.pre('save',(next)=>{
 
 
 const User = mongoose.model('User', UserSchema); 
-module.exports = {User}; 
+module.exports = User;
+
 
 
 
