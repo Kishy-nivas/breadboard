@@ -1,0 +1,325 @@
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.FINISHED = exports.RUNNING = exports.READY = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _fact = require('./fact');
+
+var _fact2 = _interopRequireDefault(_fact);
+
+var _rule = require('./rule');
+
+var _rule2 = _interopRequireDefault(_rule);
+
+var _operator = require('./operator');
+
+var _operator2 = _interopRequireDefault(_operator);
+
+var _almanac = require('./almanac');
+
+var _almanac2 = _interopRequireDefault(_almanac);
+
+var _events = require('events');
+
+var _engineFacts = require('./engine-facts');
+
+var _engineDefaultOperators = require('./engine-default-operators');
+
+var _engineDefaultOperators2 = _interopRequireDefault(_engineDefaultOperators);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var debug = require('debug')('json-rules-engine');
+
+var READY = exports.READY = 'READY';
+var RUNNING = exports.RUNNING = 'RUNNING';
+var FINISHED = exports.FINISHED = 'FINISHED';
+
+var Engine = function (_EventEmitter) {
+  _inherits(Engine, _EventEmitter);
+
+  /**
+   * Returns a new Engine instance
+   * @param  {Rule[]} rules - array of rules to initialize with
+   */
+  function Engine() {
+    var rules = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
+    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+    _classCallCheck(this, Engine);
+
+    var _this = _possibleConstructorReturn(this, (Engine.__proto__ || Object.getPrototypeOf(Engine)).call(this));
+
+    _this.rules = [];
+    _this.allowUndefinedFacts = options.allowUndefinedFacts || false;
+    _this.operators = new Map();
+    _this.facts = new Map();
+    _this.status = READY;
+    rules.map(function (r) {
+      return _this.addRule(r);
+    });
+    _engineDefaultOperators2.default.map(function (o) {
+      return _this.addOperator(o);
+    });
+    return _this;
+  }
+
+  /**
+   * Add a rule definition to the engine
+   * @param {object|Rule} properties - rule definition.  can be JSON representation, or instance of Rule
+   * @param {integer} properties.priority (>1) - higher runs sooner.
+   * @param {Object} properties.event - event to fire when rule evaluates as successful
+   * @param {string} properties.event.type - name of event to emit
+   * @param {string} properties.event.params - parameters to pass to the event listener
+   * @param {Object} properties.conditions - conditions to evaluate when processing this rule
+   */
+
+
+  _createClass(Engine, [{
+    key: 'addRule',
+    value: function addRule(properties) {
+      if (!properties) throw new Error('Engine: addRule() requires options');
+      if (!properties.hasOwnProperty('conditions')) throw new Error('Engine: addRule() argument requires "conditions" property');
+      if (!properties.hasOwnProperty('event')) throw new Error('Engine: addRule() argument requires "event" property');
+
+      var rule = void 0;
+      if (properties instanceof _rule2.default) {
+        rule = properties;
+      } else {
+        rule = new _rule2.default(properties);
+      }
+      rule.setEngine(this);
+
+      this.rules.push(rule);
+      this.prioritizedRules = null;
+      return this;
+    }
+
+    /**
+     * Remove a rule from the engine
+     * @param {object|Rule} rule - rule definition. Must be a instance of Rule
+     */
+
+  }, {
+    key: 'removeRule',
+    value: function removeRule(rule) {
+      if (rule instanceof _rule2.default === false) throw new Error('Engine: removeRule() rule must be a instance of Rule');
+
+      var index = this.rules.indexOf(rule);
+      if (index === -1) return false;
+      return Boolean(this.rules.splice(index, 1).length);
+    }
+
+    /**
+     * Add a custom operator definition
+     * @param {string}   operatorOrName - operator identifier within the condition; i.e. instead of 'equals', 'greaterThan', etc
+     * @param {function(factValue, jsonValue)} callback - the method to execute when the operator is encountered.
+     */
+
+  }, {
+    key: 'addOperator',
+    value: function addOperator(operatorOrName, cb) {
+      var operator = void 0;
+      if (operatorOrName instanceof _operator2.default) {
+        operator = operatorOrName;
+      } else {
+        operator = new _operator2.default(operatorOrName, cb);
+      }
+      debug('engine::addOperator name:' + operator.name);
+      this.operators.set(operator.name, operator);
+    }
+
+    /**
+     * Remove a custom operator definition
+     * @param {string}   operatorOrName - operator identifier within the condition; i.e. instead of 'equals', 'greaterThan', etc
+     * @param {function(factValue, jsonValue)} callback - the method to execute when the operator is encountered.
+     */
+
+  }, {
+    key: 'removeOperator',
+    value: function removeOperator(operatorOrName) {
+      var operatorName = void 0;
+      if (operatorOrName instanceof _operator2.default) {
+        operatorName = operatorOrName.name;
+      } else {
+        operatorName = operatorOrName;
+      }
+
+      return this.operators.delete(operatorName);
+    }
+
+    /**
+     * Add a fact definition to the engine.  Facts are called by rules as they are evaluated.
+     * @param {object|Fact} id - fact identifier or instance of Fact
+     * @param {function} definitionFunc - function to be called when computing the fact value for a given rule
+     * @param {Object} options - options to initialize the fact with. used when "id" is not a Fact instance
+     */
+
+  }, {
+    key: 'addFact',
+    value: function addFact(id, valueOrMethod, options) {
+      var factId = id;
+      var fact = void 0;
+      if (id instanceof _fact2.default) {
+        factId = id.id;
+        fact = id;
+      } else {
+        fact = new _fact2.default(id, valueOrMethod, options);
+      }
+      debug('engine::addFact id:' + factId);
+      this.facts.set(factId, fact);
+      return this;
+    }
+
+    /**
+     * Add a fact definition to the engine.  Facts are called by rules as they are evaluated.
+     * @param {object|Fact} id - fact identifier or instance of Fact
+     */
+
+  }, {
+    key: 'removeFact',
+    value: function removeFact(factOrId) {
+      var factId = void 0;
+      if (!(factOrId instanceof _fact2.default)) {
+        factId = factOrId;
+      } else {
+        factId = factOrId.id;
+      }
+
+      return this.facts.delete(factId);
+    }
+
+    /**
+     * Iterates over the engine rules, organizing them by highest -> lowest priority
+     * @return {Rule[][]} two dimensional array of Rules.
+     *    Each outer array element represents a single priority(integer).  Inner array is
+     *    all rules with that priority.
+     */
+
+  }, {
+    key: 'prioritizeRules',
+    value: function prioritizeRules() {
+      if (!this.prioritizedRules) {
+        var ruleSets = this.rules.reduce(function (sets, rule) {
+          var priority = rule.priority;
+          if (!sets[priority]) sets[priority] = [];
+          sets[priority].push(rule);
+          return sets;
+        }, {});
+        this.prioritizedRules = Object.keys(ruleSets).sort(function (a, b) {
+          return Number(a) > Number(b) ? -1 : 1; // order highest priority -> lowest
+        }).map(function (priority) {
+          return ruleSets[priority];
+        });
+      }
+      return this.prioritizedRules;
+    }
+
+    /**
+     * Stops the rules engine from running the next priority set of Rules.  All remaining rules will be resolved as undefined,
+     * and no further events emitted.  Since rules of the same priority are evaluated in parallel(not series), other rules of
+     * the same priority may still emit events, even though the engine is in a "finished" state.
+     * @return {Engine}
+     */
+
+  }, {
+    key: 'stop',
+    value: function stop() {
+      this.status = FINISHED;
+      return this;
+    }
+
+    /**
+     * Returns a fact by fact-id
+     * @param  {string} factId - fact identifier
+     * @return {Fact} fact instance, or undefined if no such fact exists
+     */
+
+  }, {
+    key: 'getFact',
+    value: function getFact(factId) {
+      return this.facts.get(factId);
+    }
+
+    /**
+     * Runs an array of rules
+     * @param  {Rule[]} array of rules to be evaluated
+     * @return {Promise} resolves when all rules in the array have been evaluated
+     */
+
+  }, {
+    key: 'evaluateRules',
+    value: function evaluateRules(ruleArray, almanac) {
+      var _this2 = this;
+
+      return Promise.all(ruleArray.map(function (rule) {
+        if (_this2.status !== RUNNING) {
+          debug('engine::run status:' + _this2.status + '; skipping remaining rules');
+          return;
+        }
+        return rule.evaluate(almanac).then(function (ruleResult) {
+          debug('engine::run ruleResult:' + ruleResult.result);
+          if (ruleResult.result) {
+            _this2.emit('success', rule.event, almanac, ruleResult);
+            _this2.emit(rule.event.type, rule.event.params, almanac, ruleResult);
+            almanac.factValue('success-events', { event: rule.event });
+          } else {
+            _this2.emit('failure', rule.event, almanac, ruleResult);
+          }
+        });
+      }));
+    }
+
+    /**
+     * Runs the rules engine
+     * @param  {Object} runtimeFacts - fact values known at runtime
+     * @param  {Object} runOptions - run options
+     * @return {Promise} resolves when the engine has completed running
+     */
+
+  }, {
+    key: 'run',
+    value: function run() {
+      var _this3 = this;
+
+      var runtimeFacts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+      debug('engine::run started');
+      debug('engine::run runtimeFacts:', runtimeFacts);
+      runtimeFacts['success-events'] = new _fact2.default('success-events', (0, _engineFacts.SuccessEventFact)(), { cache: false });
+      this.status = RUNNING;
+      var almanac = new _almanac2.default(this.facts, runtimeFacts);
+      var orderedSets = this.prioritizeRules();
+      var cursor = Promise.resolve();
+      // for each rule set, evaluate in parallel,
+      // before proceeding to the next priority set.
+      return new Promise(function (resolve, reject) {
+        orderedSets.map(function (set) {
+          cursor = cursor.then(function () {
+            return _this3.evaluateRules(set, almanac);
+          }).catch(reject);
+          return cursor;
+        });
+        cursor.then(function () {
+          _this3.status = FINISHED;
+          debug('engine::run completed');
+          resolve(almanac.factValue('success-events'));
+        }).catch(reject);
+      });
+    }
+  }]);
+
+  return Engine;
+}(_events.EventEmitter);
+
+exports.default = Engine;
