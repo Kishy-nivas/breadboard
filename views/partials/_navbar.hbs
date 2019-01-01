@@ -16,14 +16,19 @@
             <li class="nav-item">
                 <a class="nav-link" href="/about"><span><i class="fa fa-fort-awesome"></i> </span> About </a>
             </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/users/login"><span> <i class="fa fa-user"></i></span> Sign in</a>
-            </li>
+  			
+          
             {{#if user}}
+              <li class="nav-item">
+                <a class="nav-link" href=""><span> <i class="fa fa-user"></i></span> welcome {{ user.name }}   </a>
+              </li>
               <li class="nav-item">
                 <a class="nav-link" href="/users/logout"><span> <i class="fa fa-user"></i></span> Logout </a>
             </li>
+            {{ else }} 
+            	<li class="nav-item">
+            	    <a class="nav-link" href="/login"><span> <i class="fa fa-user"></i></span> Sign in</a>
+                </li>
             {{/if}}
         </ul>
     </div>

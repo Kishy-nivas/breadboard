@@ -6,18 +6,55 @@ var logger = require('morgan');
 var hbs = require('express-handlebars');
 var mongoose = require('mongoose'); 
 var session = require('express-session'); 
-var flash = require('connect-flash');
 var passport = require('passport');
 const User = require('./models/user');
 var bcrypt = require('bcrypt');
+const uuid = require('uuid/v4');
+const FileStore = require('session-file-store')(session);
+const bodyParser = require('body-parser');
+const LocalStrategy = require('passport-local').Strategy; 
+const flash = require('express-flash'); 
 
 
 // database connection 
 
 mongoose.Promise = global.Promise; 
-//var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
-var mongodb = "mongodb://127.0.0.1:27017/library-app";
+var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
+//var mongodb = "mongodb://127.0.0.1:27017/library-app";
 
+
+// passport- Authentication module 
+
+passport.use(new LocalStrategy({
+	  passReqToCallback: true
+	},
+	function(req,username,password,cb){
+		User.findOne({'name' : username},(err,user)=>{
+			console.log(user);
+			if(err) return cb(err); 
+			if(!user) return cb(null,false,req.flash('error', 'user does not exists ')); 
+			console.log(password);
+			console.log(user.password);
+			bcrypt.compare(password,user.password,function (err,res){
+				console.log(res);
+				if(res==true) return cb(null,user,req.flash('success', `Welcome, ${user.name} you have logged in successfully`)); 
+				else return cb(null,false,req.flash('error', 'password do not match')); 
+			});
+		});
+	}
+));
+
+passport.serializeUser(function(user,cb){
+	cb(null,user._id);
+});
+
+
+passport.deserializeUser(function(id,cb){
+	User.findById(id,(err,user)=>{
+		if(err) return cb(err); 
+		else return cb(null,user);
+	});
+});
 
 mongoose.connect(mongodb,{useNewUrlParser : true}); 
 var db = mongoose.connection; 
@@ -33,6 +70,18 @@ var usersRouter = require('./routes/users');
 var app = express(); 
 
 
+
+app.use(flash());
+app.use(bodyParser.urlencoded({extended : false})); 
+app.use(bodyParser.json());
+app.use(require('express-session')({ 
+	secret: 'top secret', 
+	resave: true, 
+	saveUninitialized: true
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.set('views', path.join(__dirname, 'views'));
 app.engine('hbs', hbs({
 	extname : 'hbs', 
@@ -43,69 +92,26 @@ app.engine('hbs', hbs({
 
 
 app.set('view engine', 'hbs');
-app.use(flash());
-app.use(session({
-  secret: 'Secret',
-  resave: true,
-  saveUninitialized: true,
-}));
-// import passport and passport-local strategy
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
 
-// add local authentication strategy with a verification function
-passport.use(new LocalStrategy(function(username, password, cb) {
-  // Locate user first here
-  bcrypt.compare(password, user.password, function(err, res) {
-    if (err) return cb(err);
-    if (res === false) {
-      return cb(null, false);
-    } else {
-      return cb(null, user);
-    }
-  });
-}));
-// initialize passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.get('/login',(req,res) =>{	
+	res.render('user/login',{message : req.flash('error')});
+});
+
+app.post('/login',passport.authenticate('local',{failureRedirect : '/login', successRedirect: '/' ,
+	failureFlash : true		
+		}
+));
 
 
-// configure my-login route to authenticate using added "local" strategy
-// if a user is logged in, send him back a message
-app.post('/users/login',
-  // wrap passport.authenticate call in a middleware function
- 
+	
+app.get('/logout',
+	(req,res)=>{
+		req.logout();
+		req.flash('success', "you have logged out successfully");
+		res.redirect('/');
+	}
+);
 
-  function (req, res, next) {
-    // call passport authentication passing the "local" strategy name and a callback function
-    console.log(req.body);
-    passport.authenticate('local', function (error, user, info) {
-      // this will execute in any case, even if a passport strategy will find an error
-      // log everything to console
-      console.log(error);
-      console.log(user);
-      console.log(info);
-
-      if (error) {
-        res.status(401).send(error);
-      } else if (!user) {
-        res.status(401).send(info);
-      } else {
-        next();
-      }
-
-      res.status(401).send(info);
-    })(req, res);
-  },
-
-  // function to call once successfully authenticated
-  function (req, res) {
-    res.status(200).send('logged in!');
-  });
 
 
 app.use(express.static(path.join(__dirname, 'public')));

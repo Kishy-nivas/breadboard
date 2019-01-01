@@ -9,10 +9,6 @@ router.get('/', function(req, res, next) {
 });
 
 
-router.get('/login', (req,res,next) => {
-  res.render('user/login', {title : "Login | Breadboard"});
-});
-
 
 router.get('/register', (req,res,next) => {
   res.render('user/register',{title : "Register | Breadboard"}); 
@@ -50,7 +46,7 @@ router.post('/register', (req,res,next) => {
   }else{
       User.findOne({'email' : req.body.email}, (err,user)=>{
         if(user){
-          req.flash('error_msg','Email Already exists');
+          req.flash('success','Email Already exists, please log in');
           console.log("user already exists");
           res.redirect('/');
 
@@ -62,9 +58,12 @@ router.post('/register', (req,res,next) => {
           }); 
           user.save((err)=>{
             if(!err){
-              req.flash('success_msg',"Registration successfully" );
-              console.log("user created");
-              res.redirect('/users/login');
+              
+              req.login(user,(err)=>{
+              	req.flash('success',"Registration completed successfully" );
+              	res.redirect('/');
+              });
+              
             }else{
               res.send(err);
               console.log(err);
@@ -76,11 +75,5 @@ router.post('/register', (req,res,next) => {
   
 });
 
-
-router.get('/logout', (req,res, next) =>{
-  req.logout();
-  res.redirect('/');
-
-});
 
 module.exports = router;

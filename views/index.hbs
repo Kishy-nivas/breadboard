@@ -1,10 +1,19 @@
 <hr/> 
 
+{{#if message }}
+
+	<div class="alert alert-success alert-dismissible fade show" role="alert">
+	  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	  </button>
+	  <strong>{{message}}</strong>
+	</div>
+{{/if}} 
 
 <div class="jumbotron">
   <h1 class="display-4">Breadboard</h1>
   <p class="lead">A Powerful web platform to manage your IoT applications </p>
   <hr class="my-4">
   <p>Out of Box seamless communication and out of Box rule engines for yout IoT devices </p>
-  <a class="btn btn-primary btn-lg" href="#" role="button">Join us</a>
+  <a class="btn btn-primary btn-lg" href="/users/register" role="button">Join us</a>
 </div>
