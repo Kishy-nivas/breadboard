@@ -75,5 +75,17 @@ router.post('/register', (req,res,next) => {
   
 });
 
+router.get('/user_list', (req,res) =>{
+	User.find({},(err,data)=>{
+		res.render('user/user_list', {title : "Registered Users | Breadboad", users : data}); 
+	});
+});
+
+router.get('/profile/:username', (req,res) =>{
+	User.findOne({'name' : req.params.username },(err,data)=>{
+		console.log(data);
+		res.render('user/profile', { title : `${data.name} | Breadboad`,data : data}); 
+	});
+});
 
 module.exports = router;
