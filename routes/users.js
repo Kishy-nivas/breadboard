@@ -11,10 +11,17 @@ router.get('/', function(req, res, next) {
 
 
 router.get('/register', (req,res,next) => {
+  if(req.isAuthenticated()){
+    req.flash("success", "you are a registered user already");
+    res.redirect('/');
+
+  }else{
   res.render('user/register',{title : "Register | Breadboard"}); 
+  }
 });
 
 router.post('/register', (req,res,next) => {
+
   let errors =[]; 
   if(!req.body.name ){
     errors.push({text : 'Please enter name'}); 

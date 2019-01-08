@@ -3,7 +3,7 @@ const AutoIncrement = require('mongoose-sequence')(mongoose);
 var Schema = mongoose.Schema; 
 
 const DeviceSchema = new Schema({
-	_id : Number, 
+	
 	device_name : {
 		type : String, required : true
 	},
@@ -22,7 +22,7 @@ const DeviceSchema = new Schema({
 			key : {type : String}, 
 			value :{type : String },
 			created_at : {type : Date, default : Date.now() }
-		},{ _id : false}); 
+		},{ _id : false}) 
 		
 	], 
 	owner : {
@@ -32,10 +32,9 @@ const DeviceSchema = new Schema({
 		type : String, required : true 
 	}
 	
-});
+},{collection :'device_info'});
 
 
-
-Const Device = mongoose.model('Device', DeviceSchema); 
-module.export = Device; 
+const Device = mongoose.model('Device', DeviceSchema); 
+module.exports = Device; 
 

@@ -17,11 +17,12 @@ const flash = require('express-flash');
 
 
 
+
 // database connection 
 
 mongoose.Promise = global.Promise; 
-var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
-//var mongodb = "mongodb://127.0.0.1:27017/library-app";
+//var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
+var mongodb = "mongodb://127.0.0.1:27017/library-app";
 
 
 // passport- Authentication module 
@@ -101,7 +102,7 @@ app.get('/', function(req, res, next) {
 		app.locals.user = req.user;
 	}
 	
-  res.render('index', { title: 'Home | Breadboard' , message : req.flash('success')});
+  res.render('index', { title: 'Home | Breadboard' , success: req.flash('success'),error : req.flash('error')});
 });
 
 
@@ -124,6 +125,7 @@ app.post('/login',passport.authenticate('local',{failureRedirect : '/login', suc
 app.get('/logout',
 	(req,res)=>{
 		req.logout();
+		app.locals.user = null;
 		req.flash('success', "you have logged out successfully");
 		res.redirect('/');
 	}
