@@ -31,11 +31,8 @@ passport.use(new LocalStrategy({
 	},
 	function(req,username,password,cb){
 		User.findOne({'name' : username},(err,user)=>{
-			console.log(user);
 			if(err) return cb(err); 
 			if(!user) return cb(null,false,req.flash('error', 'user does not exists ')); 
-			console.log(password);
-			console.log(user.password);
 			bcrypt.compare(password,user.password,function (err,res){
 				console.log(res);
 				if(res==true) return cb(null,user,req.flash('success', `Welcome, ${user.name} you have logged in successfully`)); 
@@ -64,27 +61,17 @@ db.once('open',()=> {
 });
 
 db.on("error", console.error.bind(console,"Error in db ")); 
+var app = express(); 
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var deviceRouter = require('./routes/device'); 
 
 
-var app = express(); 
 
 
-app.use(logger('combined'));
 
-app.use(flash());
-app.use(bodyParser.urlencoded({extended : false})); 
-app.use(bodyParser.json());
-app.use(require('express-session')({ 
-	secret: 'top secret', 
-	resave: true, 
-	saveUninitialized: true
-}));
-app.use(passport.initialize());
-app.use(passport.session());
+
 
 app.set('views', path.join(__dirname, 'views'));
 app.engine('hbs', hbs({
@@ -96,8 +83,34 @@ app.engine('hbs', hbs({
 
 
 app.set('view engine', 'hbs');
+app.use(logger('dev'));
+
+app.use(bodyParser.urlencoded({extended : false})); 
+app.use(bodyParser.json());
+app.use(require('express-session')({ 
+	secret: 'top secret', 
+	resave: true, 
+	saveUninitialized: true
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
+
+app.get('/', function(req, res, next) {
+	if(req.user){
+		app.locals.user = req.user;
+	}
+	
+  res.render('index', { title: 'Home | Breadboard' , message : req.flash('success')});
+});
+
 
 app.get('/login',(req,res) =>{	
+	if(req.user){
+		req.flash("success", "You are logged in already");
+		res.redirect('/');
+		return;
+	}
 	res.render('user/login',{message : req.flash('error'), title : "Login | Breadboad"});
 });
 

@@ -9,7 +9,14 @@ router.get('/',(req,res) => {
 
 
 router.get('/new_device', (req,res) => {
-	res.render("device/new_device"); 
+	if(!req.isAuthenticated()){
+		req.flash("success", "Please log in");
+		res.redirect('/');
+		
+	
+	}else{
+	res.render("device/new_device", {title : "New Device | Breadboad"}); 
+	}
 });
 
 

@@ -32,9 +32,9 @@ const DeviceSchema = new Schema({
 		type : String, required : true 
 	}
 	
-}, {_id : false });
+});
 
-DeviceSchema.plugin(AutoIncrement);
+
 
 Const Device = mongoose.model('Device', DeviceSchema); 
 module.export = Device; 
