@@ -1,0 +1,7 @@
+<hr>
+<h3> Registered IoT devices </h3>
+<ul class = "list-group"> 
+	{{#each devices }}
+  		<li class="list-group-item"><a href = "/device/profile/{{this.device_name}}" > {{ this.device_name }} </a>({{ this.device_type }})   </li>
+	{{/each}}
+</ul> 

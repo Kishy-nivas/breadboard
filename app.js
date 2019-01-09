@@ -14,9 +14,52 @@ const FileStore = require('session-file-store')(session);
 const bodyParser = require('body-parser');
 const LocalStrategy = require('passport-local').Strategy; 
 const flash = require('express-flash'); 
+var mqtt = require('mqtt')
+var client  = mqtt.connect('mqtt://localhost:1883');
+const Device = require('./models/device'); 
+
+function isValidJSON(msg){
+	
+	try{
+		JSON.parse(msg); 
+	} catch(e){
+		return false;
+
+	}
+	return true; 
+}
 
 
 
+client.on('connect', function () {
+  client.subscribe('device_data', function (err) {
+    if (!err) {
+      client.publish('presence', 'Hello mqtt')
+    }
+  })
+})
+
+client.on('message', function (topic, message) {
+  // message is Buffer
+ var data = JSON.parse(message);  
+
+ if(isValidJSON(message)){
+	 var device_data = JSON.parse(message); 
+	const value = {"key" : device_data.key, "value" : device_data.value}; 
+	console.log(device_data);
+
+	console.log(value);
+
+	Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value},function(err,done){
+		if(err) console.log(err);
+		else console.log("saved");
+	}});
+
+ }else{
+	 console.log("Invalid JSON format");
+ }
+
+});
 
 // database connection 
 

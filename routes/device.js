@@ -42,10 +42,12 @@ router.post('/new_device',(req,res) => {
 				errors.push({text : "Device already exists, choose a unique name "}); 
 				res.render('device/new_device', {errors : errors}); 
 			}else{
+				console.log(req.user);
 				const new_device = new Device({
 					device_name : req.body.device_name,
 					device_type : req.body.device_type,
-					description : req.body.device_description
+					description : req.body.device_description,
+					owner : req.user._id
 				});
 				new_device.save((err)=>{
 					if(!err){
@@ -65,7 +67,18 @@ router.post('/new_device',(req,res) => {
 	
 });
 
+router.get('/device_list', (req,res) =>{
+	Device.find({},(err,data)=>{
+		res.render('device/device_list', {title : "Devices Registered on Platform  | Breadboad", devices : data}); 
+	});
+});
 
+router.get('/profile/:devicename', (req,res) =>{
+	Device.findOne({'device_name' : req.params.devicename})
+	.populate('owner').exec(function(err,data){
+		res.render('device/profile',{ title : `${data.device_name} | Breadboard`,data : data} ); 
+	});
+});
 router.post('/:device_id/upload', (req,res) => {
 
 });

@@ -1,0 +1,16 @@
+<hr> 
+
+<div class="card">
+  <div class="card-header">
+  {{ data.device_name }} 
+  </div>
+  <div class="card-body">
+    <h5 class="card-title">{{ data.description }} </h5>
+    <p class = "card-text">{{data.device_type }} </p>
+
+    <p class="card-text">Registered at : {{ data.created_at }} </p>
+    <p class="card-text"> Created by {{data.owner.name }}</p>
+    <p class = "card-text"> Unique key : {{ data._id }} </p>
+    <p> {{ data.values }}</p>
+  </div>
+</div>
