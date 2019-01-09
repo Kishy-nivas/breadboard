@@ -22,7 +22,7 @@ const DeviceSchema = new Schema({
 			key : {type : String}, 
 			value :{type : String },
 			created_at : {type : Date, default : Date.now() }
-		},{ _id : false}) 
+		}) 
 		
 	], 
 	owner : {

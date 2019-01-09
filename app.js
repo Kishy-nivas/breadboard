@@ -39,6 +39,7 @@ client.on('connect', function () {
   })
 })
 
+
 client.on('message', function (topic, message) {
   // message is Buffer
  var data = JSON.parse(message);  
@@ -50,10 +51,10 @@ client.on('message', function (topic, message) {
 
 	console.log(value);
 
-	Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value},function(err,done){
+	Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value}},{upsert: true,save : true},function(err,done){
 		if(err) console.log(err);
 		else console.log("saved");
-	}});
+	});
 
  }else{
 	 console.log("Invalid JSON format");
