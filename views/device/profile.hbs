@@ -10,7 +10,28 @@
 
     <p class="card-text">Registered at : {{ data.created_at }} </p>
     <p class="card-text"> Created by {{data.owner.name }}</p>
-    <p class = "card-text"> Unique key : {{ data._id }} </p>
-    <p> {{ data.values }}</p>
+    <p class = "card-text" id = "id"> Unique key : {{ data._id }} </p>
+    <input type="hidden" id="device_id" name="device_id" value={{data._id}}>
+    
+    <p id = "data"> {{ data.values }}</p>
   </div>
 </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script> 
+        var socket = io(); 
+        var id = $("#device_id").val(); 
+     
+        var socket_link  = `message/${id}`; 
+
+        alert(socket_link);
+        socket.on(socket_link ,addMessages); 
+        
+        function addMessages(message){
+            console.log(message);
+            $("#data").append(
+               `{ created_at : ${new Date()}, key : ${message.key},value : ${message.value} , },` 
+            ); 
+        }
+       
+    </script>

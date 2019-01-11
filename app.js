@@ -17,6 +17,8 @@ const flash = require('express-flash');
 var mqtt = require('mqtt')
 var client  = mqtt.connect('mqtt://localhost:1883');
 const Device = require('./models/device'); 
+const PORT = 3000; 
+
 
 function isValidJSON(msg){
 	
@@ -29,38 +31,6 @@ function isValidJSON(msg){
 	return true; 
 }
 
-
-
-client.on('connect', function () {
-  client.subscribe('device_data', function (err) {
-    if (!err) {
-      client.publish('presence', 'Hello mqtt')
-    }
-  })
-})
-
-
-client.on('message', function (topic, message) {
-  // message is Buffer
- var data = JSON.parse(message);  
-
- if(isValidJSON(message)){
-	 var device_data = JSON.parse(message); 
-	const value = {"key" : device_data.key, "value" : device_data.value}; 
-	console.log(device_data);
-
-	console.log(value);
-
-	Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value}},{upsert: true,save : true},function(err,done){
-		if(err) console.log(err);
-		else console.log("saved");
-	});
-
- }else{
-	 console.log("Invalid JSON format");
- }
-
-});
 
 // database connection 
 
@@ -107,6 +77,53 @@ db.once('open',()=> {
 
 db.on("error", console.error.bind(console,"Error in db ")); 
 var app = express(); 
+var http = require('http').Server(app);  // bind the app with the http server 
+var io = require('socket.io')(http);  // bind the socket with the http 
+
+io.on("connection", function(socket){
+    socket.on("disconnect",()=>{
+        console.log("a user disconnected ");
+    });
+    console.log("A new  user connected");
+});
+
+
+client.on('connect', function () {
+	client.subscribe('device_data', function (err) {
+	  if (!err) {
+		client.publish('presence', 'Hello mqtt')
+	  }
+	})
+  })
+  
+  
+  client.on('message', function (topic, message) {
+	// message is Buffer
+   var data = JSON.parse(message);  
+  
+   if(isValidJSON(message)){
+	   var device_data = JSON.parse(message); 
+	  const value = {"key" : device_data.key, "value" : device_data.value}; 
+	  console.log(device_data);
+  
+	  console.log(value);
+  
+	  Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value}},{upsert: true,save : true},function(err,done){
+		  if(err) console.log(err);
+		  else { console.log("saved");
+		  		var socket_link = `message/${device_data.id}`; 
+				  io.emit(socket_link, value);
+				  console.log("data emitted " + socket_link);
+				  
+	  		}
+	  });
+  
+   }else{
+	   console.log("Invalid JSON format");
+   }
+  
+  });
+  
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -202,4 +219,7 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+
+http.listen(PORT,()=>{
+    console.log("listening on " + PORT); 
+})
