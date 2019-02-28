@@ -1,5 +1,4 @@
 <hr> 
-
 <div class="card">
   <div class="card-header">
   {{ data.device_name }} 
@@ -13,25 +12,75 @@
     <p class = "card-text" id = "id"> Unique key : {{ data._id }} </p>
     <input type="hidden" id="device_id" name="device_id" value={{data._id}}>
     
-    <p id = "data"> {{ data.values }}</p>
   </div>
 </div>
+ <div class="row">
+ 	<!-- <div class="col-md-6">
+            <table class="table table-striped table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value </th>
+                    </tr>
+                </thead>
+                <tbody class="table-body">
+              
+                </tbody>
+            </table>
+    </div>
+    --!> 
+    
+    <div class = "col-md-10">
+    	<div id="graph"> </div> 
+    </div>
+</div>
+
+
+
+
+
+
+
 
 <script src="/socket.io/socket.io.js"></script>
+<!-- Morris chart library from CDN -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script> 
         var socket = io(); 
+        function rand() { 
+        	return Math.random();
+        	
+        }
+
+	 Plotly.plot('graph', [{
+  		y: [1,2,3].map(rand),
+  		mode: 'lines',
+  		line: {color: '#80CAF6'}
+	}]);
+	var cnt = 0;
+	var interval = setInterval(function() {
+	Plotly.extendTraces('graph', {
+    y: [[getLastVal()]]
+    }, [0])
+
+  if(cnt === 100) clearInterval(interval);
+}, 300);
+       
         var id = $("#device_id").val(); 
      
         var socket_link  = `message/${id}`; 
 
         alert(socket_link);
         socket.on(socket_link ,addMessages); 
+        var arr_val = [1,2,3]; 
+        function getLastVal(){
+        	return arr_val[arr_val.length-1]; 	
+        }
         
         function addMessages(message){
-            console.log(message);
-            $("#data").append(
-               `{ created_at : ${new Date()}, key : ${message.key},value : ${message.value} , },` 
-            ); 
+        	console.log("received"); 
+            arr_val.push(Number(message.value));  
+            console.log(arr_val); 
         }
-       
-    </script>
+        	
+ </script>

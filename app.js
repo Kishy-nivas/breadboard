@@ -14,17 +14,21 @@ const FileStore = require('session-file-store')(session);
 const bodyParser = require('body-parser');
 const LocalStrategy = require('passport-local').Strategy; 
 const flash = require('express-flash'); 
-var mqtt = require('mqtt')
-var client  = mqtt.connect('mqtt://localhost:1883');
+var mqtt = require('mqtt');
+var client  = mqtt.connect('mqtt://broker.hivemq.com:1883');
+//var client = mqtt.connect('mqtt://localhost:1883');
 const Device = require('./models/device'); 
 const PORT = 3000; 
+const five = require('johnny-five'); 
 
+const board = new five.Board(); 
 
 function isValidJSON(msg){
 	
 	try{
 		JSON.parse(msg); 
 	} catch(e){
+		console.log(e);
 		return false;
 
 	}
@@ -89,9 +93,13 @@ io.on("connection", function(socket){
 
 
 client.on('connect', function () {
+	console.log("connected with mqtt");
 	client.subscribe('device_data', function (err) {
 	  if (!err) {
-		client.publish('presence', 'Hello mqtt')
+	  	console.log("subscribed to device data"); 
+	  	client.publish("message", "hello world");
+	  }else{
+	  	console.log(err);
 	  }
 	})
   })
@@ -99,24 +107,27 @@ client.on('connect', function () {
   
   client.on('message', function (topic, message) {
 	// message is Buffer
-   var data = JSON.parse(message);  
+  // var data = JSON.parse(message);  
+  
   
    if(isValidJSON(message)){
+ 
 	   var device_data = JSON.parse(message); 
 	  const value = {"key" : device_data.key, "value" : device_data.value}; 
-	  console.log(device_data);
-  
-	  console.log(value);
-  
+	 var socket_link = `message/${device_data.id}`; 
+	  io.emit(socket_link, value);
+	 /*
 	  Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value}},{upsert: true,save : true},function(err,done){
 		  if(err) console.log(err);
-		  else { console.log("saved");
+		  else { 
+		  		console.log(" new data saved");
 		  		var socket_link = `message/${device_data.id}`; 
 				  io.emit(socket_link, value);
-				  console.log("data emitted " + socket_link);
+			
 				  
 	  		}
 	  });
+	  */
   
    }else{
 	   console.log("Invalid JSON format");
@@ -218,6 +229,29 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+
+
+board.on('ready', ()=>{
+	const temperatureSensor = new five.Sensor({
+		pin :'A0',
+		threshold : 4
+	}); 
+	
+	temperatureSensor.on('change',(value)=>{
+		//console.log(value); 
+		let mv = ( value/1024.0)*5000;
+		let cel = mv/10;
+		setTimeout(function(){
+			let data = `{"key" : "temperature", "value" : "${cel}", "id" : "5c714052dcffad1bbc69490d"}`;
+			client.publish('device_data' , cel); 
+		},3000); 
+	
+	}); 
+	
+}); 
+
+
 
 
 http.listen(PORT,()=>{
