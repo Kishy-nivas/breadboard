@@ -53,7 +53,7 @@
         }
 
 	 Plotly.plot('graph', [{
-  		y: [1,2,3].map(rand),
+  		y: [0,0,0].map(rand),
   		mode: 'lines',
   		line: {color: '#80CAF6'}
 	}]);
@@ -79,7 +79,7 @@
         
         function addMessages(message){
         	console.log("received"); 
-            arr_val.push(Number(message.value));  
+            arr_val.push(Number(Number(message.value)));  
             console.log(arr_val); 
         }
         	

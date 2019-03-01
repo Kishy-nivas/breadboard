@@ -109,7 +109,7 @@ client.on('connect', function () {
 	// message is Buffer
   // var data = JSON.parse(message);  
   
-  
+ 
    if(isValidJSON(message)){
  
 	   var device_data = JSON.parse(message); 
@@ -242,18 +242,36 @@ board.on('ready', ()=>{
 		//console.log(value); 
 		let mv = ( value/1024.0)*5000;
 		let cel = mv/10;
+		let data = `{"key" : "temperature", "value" : "${cel}", "id" : "5c714052dcffad1bbc69490d"}`;
+		console.log(data);
+		client.publish('device_data' , data); 
+		/*
 		setTimeout(function(){
 			let data = `{"key" : "temperature", "value" : "${cel}", "id" : "5c714052dcffad1bbc69490d"}`;
-			client.publish('device_data' , cel); 
+			client.publish('device_data' , data); 
 		},3000); 
+		
+	});
+	*/ 
 	
-	}); 
-	
+	});
 }); 
 
 
+/*
 
 
+five.Board().on("ready", function() {
+  var temperature = new five.Thermometer({
+    controller: "LM35",
+    pin: "A0"
+  });
+
+  temperature.on("change", function() {
+    console.log(this.celsius + "°C", this.fahrenheit + "°F");
+  });
+});
+*/
 http.listen(PORT,()=>{
     console.log("listening on " + PORT); 
 })
