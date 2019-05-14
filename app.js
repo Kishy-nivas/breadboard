@@ -20,9 +20,27 @@ var client  = mqtt.connect('mqtt://broker.hivemq.com:1883');
 const Device = require('./models/device'); 
 const PORT = 3000; 
 const five = require('johnny-five'); 
-
 const board = new five.Board(); 
 
+const engine = require('json-rules-engine').default(); 
+
+engine.addRule({
+	conditions : {
+		any: [{
+			all: [{
+				fact : 'value', 
+				operator : 'greaterThanInclusive', 
+				value :  100
+			}]
+		}]
+	}, 
+	event : {
+		type : 'temperatureReached', 
+		params : {
+			message : 'Temperature has reached max threshold'
+		}
+	}
+}); 
 function isValidJSON(msg){
 	
 	try{
@@ -39,8 +57,8 @@ function isValidJSON(msg){
 // database connection 
 
 mongoose.Promise = global.Promise; 
-//var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
-var mongodb = "mongodb://127.0.0.1:27017/library-app";
+var mongodb = "mongodb://admin:2016272023ist@ds129904.mlab.com:29904/library-app";
+//var mongodb = "mongodb://127.0.0.1:27017/library-app";
 
 
 // passport- Authentication module 
@@ -109,13 +127,14 @@ client.on('connect', function () {
 	// message is Buffer
   // var data = JSON.parse(message);  
   
- 
+  console.log("in message");
    if(isValidJSON(message)){
  
-	   var device_data = JSON.parse(message); 
+	  var device_data = JSON.parse(message); 
 	  const value = {"key" : device_data.key, "value" : device_data.value}; 
-	 var socket_link = `message/${device_data.id}`; 
+	  var socket_link = `message/${device_data.id}`; 
 	  io.emit(socket_link, value);
+	  console.log("server side link  " + socket_link);
 	 /*
 	  Device.findOneAndUpdate({_id : device_data.id}, {$push: {values: value}},{upsert: true,save : true},function(err,done){
 		  if(err) console.log(err);
@@ -234,7 +253,7 @@ app.use(function(err, req, res, next) {
 
 board.on('ready', ()=>{
 	const temperatureSensor = new five.Sensor({
-		pin :'A0',
+		pin :'A4',
 		threshold : 4
 	}); 
 	
@@ -242,8 +261,17 @@ board.on('ready', ()=>{
 		//console.log(value); 
 		let mv = ( value/1024.0)*5000;
 		let cel = mv/10;
-		let data = `{"key" : "temperature", "value" : "${cel}", "id" : "5c714052dcffad1bbc69490d"}`;
+		let data = `{"key" : "temperature", "value" : "${cel}", "id" : "5c78d53afa92bd0ca34d0d7d"}`;
+		let engine_data = {value : cel}; 
+		engine 
+			.run(engine_data)
+			.then(events => {
+				events.map(event => console.log(event.params.message))
+			});
 		console.log(data);
+		const value1 = {"key" : data.key, "value" : data.value}; 
+	  	var socket_link = `message/${data.id}`;
+	  	io.emit(socket_link,value1); 
 		client.publish('device_data' , data); 
 		/*
 		setTimeout(function(){
@@ -271,7 +299,14 @@ five.Board().on("ready", function() {
     console.log(this.celsius + "°C", this.fahrenheit + "°F");
   });
 });
+
+let engine = new Engine(); 
+
+
+
 */
+
+
 http.listen(PORT,()=>{
     console.log("listening on " + PORT); 
 })
